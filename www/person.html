@@ -9,7 +9,7 @@
     <script src="./scripts/classes.js"></script>
     <script src="./scripts/global.js"></script>
     <script src="./scripts/rest-client.js"></script>
-    <script src="./scripts/methods.js"></script>
+    <script src="./scripts/person.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -32,7 +32,7 @@
         
         nav {
             float: left;
-            width: 40%;
+            width: 15%;
             height: 530px;
             /* only for demonstration, should be removed */
             background: #ccc;
@@ -49,7 +49,7 @@
         article {
             float: left;
             padding: 20px;
-            width: 60%;
+            width: 85%;
             background-color: #f1f1f1;
             height: 100%;
             /* only for demonstration, should be removed */
@@ -63,9 +63,7 @@
         }
         
         section ul {
-            list-style-type: none;
-            padding: 0;
-            height: 100%;
+            padding: 5px;
         }
         /* Style the footer */
         
@@ -83,39 +81,6 @@
         }
         /* Responsive layout - makes the two columns/boxes stack on top of each other instead of next to each other, on small screens */
         
-        ul {
-            list-style-type: none;
-            margin: 0;
-            padding: 0;
-        }
-        
-        li {
-            font: 200 20px/1.5 Helvetica, Verdana, sans-serif;
-            border-bottom: 1px solid #aaa;
-        }
-        
-        li:last-child {
-            border: none;
-        }
-        
-        li a {
-            text-decoration: none;
-            color: #000;
-            display: block;
-            width: 100%;
-            -webkit-transition: font-size 0.3s ease, background-color 0.3s ease;
-            -moz-transition: font-size 0.3s ease, background-color 0.3s ease;
-            -o-transition: font-size 0.3s ease, background-color 0.3s ease;
-            -ms-transition: font-size 0.3s ease, background-color 0.3s ease;
-            transition: font-size 0.3s ease, background-color 0.3s ease;
-        }
-        
-        li a:hover {
-            font-size: 24px;
-            background: #f6f6f6;
-            cursor: pointer;
-        }
-        
         @media (max-width: 600px) {
             nav,
             article {
@@ -132,8 +97,8 @@
             border: 16px solid #f3f3f3;
             border-radius: 50%;
             border-top: 16px solid #ccc;
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             -webkit-animation: spin 2s linear infinite;
             /* Safari */
             animation: spin 2s linear infinite;
@@ -167,21 +132,10 @@
     </header>
 
     <section>
-
-        <nav>
-            <div id="searchbox" style="padding-top: 10px; padding-bottom: 30px; padding-left: 3px; padding-right: 3px; margin: 0px">
-                <input type="text" oninput="reloadSearchHistoryDelayed()" placeholder="Search..." title="[name];&#013(agreed/disagreed) with [name];&#013talked about [keyword];&#013lived (before/after) [year] (BC);&#013interested in [area of philosophy]&#013" id="search_input"
-                    style="width: 90%; padding: 10px">
-                <button type="submit" onclick="runQuery()" id="search_button" style="padding: 10px"><i class="fa fa-search"></i></button>
-            </div>
-            <ul id=search_history class="scrollable">
-            </ul>
-        </nav>
-
-        <article class="scrollable">
-            <ul id=philosophers>
-            </ul>
+        <article class="scrollable" id="informations">
         </article>
+        <nav id="details">
+        </nav>
     </section>
 
     <footer>

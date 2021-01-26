@@ -1,4 +1,5 @@
 from flask import Flask, request
+from flask_cors import CORS
 import re
 from datetime import datetime
 import os
@@ -11,10 +12,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 sparql = SPARQLWrapper("http://127.0.0.1:3030/Philosophers")
 
 app = Flask(__name__)
-
-@app.route('/')
-def hello_world():
-    return request.args.get("val")
+CORS(app)
 
 def aggregate_results(results):
     result_dict = {}
@@ -29,10 +27,10 @@ def aggregate_results(results):
                 "born": res["born"],
                 "died": res["died"] if "died" in res else None,
                 "era" : res["era"],
-                "notableIdea": [res["notableIdea"]]
+                "notableIdeas": [res["notableIdea"]]
             }
         else:
-            result_dict[name]["notableIdea"].append(res["notableIdea"])
+            result_dict[name]["notableIdeas"].append(res["notableIdea"])
     return result_dict
 
 def aggregate_philosopher(info_results,
@@ -48,22 +46,29 @@ def aggregate_philosopher(info_results,
         "wikidata": image_results[0]["wikidata_subject"],
         "image": image_results[0]["image"],
         "name": info_results[0]["name"],
+        "born": info_results[0]["born"],
+        "died": info_results[0]["died"] if "died" in info_results[0] else None,
         "abstract": info_results[0]["abstract"],
         "era": info_results[0]["era"],
-        "notable_works": notable_works_results[0]["notableWorks"] if len(notable_works_results) > 0 else None,
-        "notable_ideas": [], "thoughts": [], "agreed_with": [], "disagreed_with": []}
+        "notableWorks": notable_works_results[0]["notableWorks"] if len(notable_works_results) > 0 else None,
+        "notableIdeas": [], "thoughts": {}, "agreedWith": [], "disagreedWith": []}
 
     for row in notable_ideas_results:
-        result_dict["notable_ideas"].append(row["notableIdea"])
+        result_dict["notableIdeas"].append(row["notableIdea"])
 
     for row in thoughts_results:
-        result_dict["thoughts"].append(row)
+        if row["thought"]["value"] in result_dict["thoughts"]:
+            result_dict["thoughts"][row["thought"]["value"]]["category"].append(row["category"])
+        else:
+            result_dict["thoughts"][row["thought"]["value"]] = row
+            result_dict["thoughts"][row["thought"]["value"]]["category"] = [row["category"]]
+    result_dict["thoughts"] = list(result_dict["thoughts"].values())
 
     for row in agreed_with_results:
-        result_dict["agreed_with"].append(row)
+        result_dict["agreedWith"].append(row)
 
     for row in disagreed_with_results:
-        result_dict["disagreed_with"].append(row)
+        result_dict["disagreedWith"].append(row)
 
     return result_dict
 
@@ -232,35 +237,36 @@ def get_disagreed_with_results(philosopher_id):
 @app.route("/search")
 def query_database():
     def convert_rules_to_filters(rules):
-        filters = ""
+        filters = []
         for rule in rules:
             if re.match("agreed with \w*", rule):
                 value = rule[12:]
-                filters += f'FILTER (CONTAINS(LCASE(?nameP), "{value}"))\n'
+                filters.append(f'CONTAINS(LCASE(?nameP), "{value}")')
             elif re.match("disagreed with \w*", rule):
                 value = rule[15:]
-                filters += f'FILTER (CONTAINS(LCASE(?nameN), "{value}"))\n'
+                filters.append(f'CONTAINS(LCASE(?nameN), "{value}")')
             elif re.match("talked about \w*", rule):
                 value = rule[13:]
-                filters += f'FILTER (CONTAINS(LCASE(?line), "{value}"))\n'
+                filters.append(f'CONTAINS(LCASE(?line), "{value}")')
             elif re.match("interested in \w*", rule):
                 value = rule[14:]
-                filters += f'FILTER (CONTAINS(LCASE(?category), "{value}"))\n'
-            elif re.match("lived before \w* BC", rule):
+                filters.append(f'CONTAINS(LCASE(?category), "{value}")')
+            elif re.match("lived before \w* bc", rule):
                 value = int(rule[13:-3])
-                filters += f'FILTER (?born <= {-value})\n'
-            elif re.match("lived after \w* BC", rule):
+                filters.append(f'?born <= {-value}')
+            elif re.match("lived after \w* bc", rule):
                 value = int(rule[12:-3])
-                filters += f'FILTER (?born >= {-value})\n'
+                filters.append(f'?born >= {-value}')
             elif re.match("lived before \w*", rule):
                 value = int(rule[13:])
-                filters += f'FILTER (?born <= {value})\n'
+                filters.append(f'?born <= {value}')
             elif re.match("lived after \w*", rule):
                 value = int(rule[12:])
-                filters += f'FILTER (?born >= {value})\n'
+                filters.append(f'?born >= {value}')
             else:
                 value = rule
-                filters += f'FILTER (CONTAINS(LCASE(?name), "{value}"))\n'
+                filters.append(f'CONTAINS(LCASE(?name), "{value}")')
+        filters = "FILTER (" + " && ".join(filters) + ")"
         return filters
     if request.args.get("query") is not None:
         query = request.args.get("query")[1:-1].lower()
@@ -323,21 +329,12 @@ def get_search_result_list():
     def build_query_from_rules(rules):
         parsed_rules = eval(rules)
         return "; ".join(parsed_rules)
+    contains = request.args.get("contains")
     result = [{"timestamp": res.split("&")[0],
-               "query_id": res.split("&")[0]+"&"+res.split("&")[1],
-               "query": build_query_from_rules(res.split("&")[2][:-5])} for res in os.listdir("search_results")]
-    return json.dumps(sorted(result, key=lambda x: x["timestamp"]))
+               "queryId": res.split("&")[0]+"&"+res.split("&")[1],
+               "query": build_query_from_rules(res.split("&")[2][:-5])} for res in os.listdir("search_results") if contains in build_query_from_rules(res.split("&")[2][:-5])]
 
-# @app.route("/search_results/<query_id>")
-# def get_search_result(query_id):
-#     raw = bool(request.args.get("raw"))
-#
-#     return query_id
-#
-# @app.route("/query_results/<query_id>", methods=["POST"])
-# def query_search_result(query_id):
-#     sparql_query = request.data
-#     return request.data
+    return json.dumps(sorted(result, key=lambda x: x["timestamp"], reverse=True))
 
 @app.route("/philosophers")
 def get_philosophers():
